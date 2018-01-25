@@ -1,0 +1,122 @@
+namespace Editor;
+
+enum NodeType:byte{
+    BUTTON,SPRITE,LAYOUT,LABEL,UI_SCROLL_VIEW,UI_LIST_VIEW
+}
+
+table EditorRoot
+{
+    textures:[string];
+    nodes:[NodeTree];
+}
+
+union Component{Sprite,Label,Button}
+
+
+table NodeTree
+{
+    name:string;
+    position:Vec2f;
+    scale:Vec2f;
+    size:Sizef;
+    rotation:int = 0;
+    anchor:Vec2f;
+    zOrder:int;
+    opacity:ubyte;
+    color:Vec4f;
+    children:[NodeTree];
+    type:NodeType;
+    component:Component;
+    enablePhysics:bool = false;
+    physics:Body;
+
+}
+
+table Sprite{
+    frameName:string;
+}
+
+table Label{
+    font:string;
+    text:string;
+}
+
+table Button{
+    text:string;
+    textureNormal:string;
+    textureSelected:string;
+    textureDisabled:string;
+}
+
+//Physics related
+enum BodyType:byte{
+    STATIC,DYNAMIC,KINEMATIC
+}
+
+table Body{
+    id:int;
+    pos:Vec2f;
+    type:BodyType;
+    fixtures:[Fixture];
+}
+
+
+
+enum FixtureType:byte{
+    POLYGON,CIRCLE,LINE
+}
+
+table Fixture{
+ name: string;
+ type:FixtureType;
+ density:float;
+ friction:float;
+ restitution:float;
+ points:[Vec2f];
+
+}
+
+enum JointType:byte{
+    REVOLUTE,PRISMATIC
+}
+
+table Joint{
+    bodyA:int;
+    bodyB:int;
+    posA:Vec2f;
+    posB:Vec2f;
+    type:JointType;
+}
+
+// Common types
+
+struct Vec4b
+{
+    a:ubyte;
+    r:ubyte;
+    g:ubyte;
+    b:ubyte;
+}
+
+struct Vec4f
+{
+    a:float;
+    r:float;
+    g:float;
+    b:float;
+}
+
+struct Vec2f
+{    
+    x:float;
+    y:float;
+}
+
+
+struct Sizef{
+    width:float;
+    height:float;
+}
+
+
+root_type EditorRoot;

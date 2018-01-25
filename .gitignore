@@ -1,0 +1,13 @@
+# Created by .ignore support plugin (hsz.mobi)
+### Example user template template
+### Example user template
+cmake-build-debug/
+proj.ios_mac/
+cocos2d/
+# IntelliJ project files
+.idea
+*.iml
+out
+gen
+.DS_Store
+.cocos-project.json
