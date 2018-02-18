@@ -1,0 +1,8 @@
+//
+// Created by Oleh on 2/11/18.
+//
+
+#ifndef TEMPLATE_SELECTIONACTION_H
+#define TEMPLATE_SELECTIONACTION_H
+
+#endif //TEMPLATE_SELECTIONACTION_H
