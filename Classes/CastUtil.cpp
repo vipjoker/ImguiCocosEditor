@@ -4,21 +4,22 @@
 
 #include "CastUtil.h"
 #include <iostream>
+
 CastType CastUtil::getType(cocos2d::Node *node) {
 
-    if (typeid(node) == typeid(cocos2d::Sprite)){
+    if (dynamic_cast<cocos2d::Sprite*>(node)){
         std::cout << "sprite" <<std::endl;
         return SPRITE;
     }
-    else if (typeid(node) == typeid(cocos2d::Label)){
+    else if (dynamic_cast<cocos2d::Label*>(node)){
         std::cout << "label"<<std::endl;;
         return LABEL;
 
     }
-    else if (typeid(node) == typeid(cocos2d::ui::Button)) {
+    else if (dynamic_cast<cocos2d::ui::Button*>(node)) {
         return BUTTON;
     }
-    else if(typeid(node) == typeid(cocos2d::ui::Layout)){
+    else if(dynamic_cast<cocos2d::ui::Layout*>(node)){
         return LAYOUT;
     }
     std::cout << "Node" <<std::endl;;

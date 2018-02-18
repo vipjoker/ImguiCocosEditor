@@ -265,6 +265,16 @@ void ImGuiEditor::showEditWindow() {
 
         if(CastUtil::getType(selectedNode) == CastType::LABEL) {
             if (ImGui::CollapsingHeader("Label properties")) {
+                cocos2d::Label *l = dynamic_cast<cocos2d::Label *>(selectedNode);
+
+                char buff[64];
+                const char *label = l->getString().c_str();
+                strcpy(buff, label);
+                if(ImGui::InputText("Name", buff, 64)) l->setString(string(buff));
+
+
+                l->getTextAlignment()
+
 
 
 

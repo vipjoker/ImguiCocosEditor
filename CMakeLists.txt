@@ -135,6 +135,7 @@ set(GAME_SRC
 
 set(GAME_HEADERS
         Classes/include/AppDelegate.h
+        Classes/include/CastUtil.h
         Classes/include/MainScene.h
         Classes/include/EditNodeBuilder.h
         Classes/include/FileManager.h
@@ -146,7 +147,7 @@ set(GAME_HEADERS
         Classes/EditorRoot_generated.h
         ${IMGUI_INC}
         ${PLATFORM_SPECIFIC_HEADERS}
-        Classes/ModelLoader.cpp Classes/include/ModelLoader.h Classes/include/SelectionAction.h Classes/SelectionAction.cpp Classes/include/Logger.h Classes/box2dSpecific/b2Scene.cpp Classes/box2dSpecific/b2Scene.h Classes/box2dSpecific/b2Sprite.cpp Classes/box2dSpecific/b2Sprite.h Classes/CastUtil.cpp Classes/CastUtil.h)
+        Classes/ModelLoader.cpp Classes/include/ModelLoader.h Classes/include/SelectionAction.h Classes/SelectionAction.cpp Classes/include/Logger.h Classes/box2dSpecific/b2Scene.cpp Classes/box2dSpecific/b2Scene.h Classes/box2dSpecific/b2Sprite.cpp Classes/box2dSpecific/b2Sprite.h Classes/CastUtil.cpp )
 
 
 # add the executable
