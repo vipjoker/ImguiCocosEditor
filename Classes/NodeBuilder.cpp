@@ -4,8 +4,9 @@
 
 #include <cocos/ui/UIButton.h>
 #include "include/NodeBuilder.h"
+#include <typeinfo>
 
-void NodeBuilder::buildNode(Editor::EditorRootT *editorRoot, Node *parent, NodeTreeT *selected) {
+void NodeBuilder::buildNode(Editor::EditorRootT *editorRoot, Node *parent) {
 
 
     for (int i = 0; i < editorRoot->nodes.size(); i++) {
@@ -59,15 +60,6 @@ void NodeBuilder::buildNode(Editor::EditorRootT *editorRoot, Node *parent, NodeT
             node->setPhysicsBody(body);
         }
 
-//        if (nodeTree == selected) {
-//
-//            auto sprite =ui::Scale9Sprite::createWithSpriteFrameName("frame");
-//            sprite->setContentSize(nodeTree->size->width() == 0 ? cocos2d::Size(100, 100) : cocos2d::Size(nodeTree->size->width() + 10,
-//                                                                                        nodeTree->size->height() + 10));
-//            sprite->setAnchorPoint(cocos2d::Point::ANCHOR_MIDDLE);
-//            sprite->setPosition(node->getContentSize()/2);
-//            node->addChild(sprite);
-//        }
         parent->addChild(node);
 
 
@@ -111,3 +103,7 @@ Node *NodeBuilder::parseListView(NodeTreeT *nodeTree, Node *parent) {
     ui::ListView *list = ui::ListView::create();
     return list;
 }
+
+
+
+

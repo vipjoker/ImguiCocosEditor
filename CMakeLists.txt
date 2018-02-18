@@ -1,11 +1,11 @@
 
 cmake_policy(SET CMP0017 NEW)
-set (CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 11)
 
 cmake_minimum_required(VERSION 3.1)
 
 set(APP_NAME Template)
-project (${APP_NAME})
+project(${APP_NAME})
 
 set(COCOS2D_ROOT ${CMAKE_SOURCE_DIR}/cocos2d)
 
@@ -15,35 +15,36 @@ set(cocos_root /Users/oleh/Documents/tools/cocos2d-x-3.16)
 
 
 # Some macro definitions
-if(MACOSX OR APPLE)
-  ADD_DEFINITIONS (-DCC_TARGET_OS_MAC)
-  ADD_DEFINITIONS (-DUSE_FILE32API)
-  set(PLATFORM_FOLDER mac)
-elseif(LINUX)
-  ADD_DEFINITIONS(-DLINUX)
-  set(PLATFORM_FOLDER linux)
-elseif(ANDROID)
-  ADD_DEFINITIONS (-DUSE_FILE32API)
-  set(PLATFORM_FOLDER android)
-else()
-  message( FATAL_ERROR "Unsupported platform, CMake will exit" )
-endif()
+if (MACOSX OR APPLE)
+    ADD_DEFINITIONS(-DCC_TARGET_OS_MAC)
+    ADD_DEFINITIONS(-DUSE_FILE32API)
+    set(PLATFORM_FOLDER mac)
+elseif (LINUX)
+    ADD_DEFINITIONS(-DLINUX)
+    set(PLATFORM_FOLDER linux)
+elseif (ANDROID)
+    ADD_DEFINITIONS(-DUSE_FILE32API)
+    set(PLATFORM_FOLDER android)
+else ()
+    message(FATAL_ERROR "Unsupported platform, CMake will exit")
+endif ()
 
 add_subdirectory(${COCOS2D_ROOT})
+add_subdirectory(cocos2d/external/Box2D)
 
-if(ANDROID)
+if (ANDROID)
     set(PLATFORM_SPECIFIC_SRC proj.android/jni/main.cpp)
     set(RES_PREFIX "/Resources")
-elseif(IOS)
+elseif (IOS)
     set(PLATFORM_SPECIFIC_SRC
             proj.ios_mac/ios/main.m
             proj.ios_mac/ios/AppController.mm
             proj.ios_mac/ios/RootViewController.mm
             )
 
-elseif(MACOSX OR APPLE)
+elseif (MACOSX OR APPLE)
     set(PLATFORM_SPECIFIC_SRC proj.ios_mac/mac/main.cpp)
-    
+
     set(MACOSX_BUNDLE_BUNDLE_NAME "\${PRODUCT_NAME}")
     set(MACOSX_BUNDLE_INFO_PLIST proj.ios_mac/mac/Info.plist)
     set(MACOSX_BUNDLE_ICON_FILE Icon)
@@ -59,29 +60,32 @@ elseif(MACOSX OR APPLE)
 
     list(APPEND PLATFORM_SPECIFIC_SRC ${RES_FILES} ${RES_ICON})
 
-elseif(LINUX)
+elseif (LINUX)
     set(PLATFORM_SPECIFIC_SRC proj.linux/main.cpp)
     set(RES_PREFIX "/Resources")
-else()
-    message( FATAL_ERROR "Unsupported platform, CMake will exit" )
+else ()
+    message(FATAL_ERROR "Unsupported platform, CMake will exit")
 
-endif()
+endif ()
 
 include_directories(
-	/usr/local/include/GLFW
-	/usr/include/GLFW
-	${cocos_root}
-	${cocos_root}/cocos
-	${cocos_root}/external
-	${cocos_root}/cocos/platform
-	${cocos_root}/cocos/audio/include/
-	Classes
+        cocos2d/external/Box2D
+
+        /usr/local/include/GLFW
+        /usr/include/GLFW
+        ${cocos_root}
+        ${cocos_root}/cocos
+        ${cocos_root}/external
+        ${cocos_root}/cocos/platform
+        ${cocos_root}/cocos/audio/include/
+        Classes
         Classes/ImGUI
         Classes/flatbuffers
         Classes/custom_nodes
         Classes/include
+        Classes/box2dSpecific
 )
-if ( MACOSX OR APPLE )
+if (MACOSX OR APPLE)
     include_directories(
             ${COCOS2D_ROOT}/external/glfw3/include/mac
     )
@@ -121,11 +125,12 @@ set(GAME_SRC
         Classes/custom_nodes/NanoVgNode.cpp
         Classes/custom_nodes/DragNDropManager.cpp
         Classes/PhysicsBuilder.cpp
+        Classes/box2dSpecific/b2DebugDraw.cpp
+        Classes/box2dSpecific/b2DebugLayer.cpp
+        Classes/box2dSpecific/b2Utils.cpp
         ${IMGUI_SRC}
         ${PLATFORM_SPECIFIC_SRC}
         )
-
-
 
 
 set(GAME_HEADERS
@@ -141,23 +146,23 @@ set(GAME_HEADERS
         Classes/EditorRoot_generated.h
         ${IMGUI_INC}
         ${PLATFORM_SPECIFIC_HEADERS}
-        Classes/ModelLoader.cpp Classes/include/ModelLoader.h)
+        Classes/ModelLoader.cpp Classes/include/ModelLoader.h Classes/include/SelectionAction.h Classes/SelectionAction.cpp Classes/include/Logger.h Classes/box2dSpecific/b2Scene.cpp Classes/box2dSpecific/b2Scene.h Classes/box2dSpecific/b2Sprite.cpp Classes/box2dSpecific/b2Sprite.h Classes/CastUtil.cpp Classes/CastUtil.h)
 
 
 # add the executable
-if(ANDROID)
+if (ANDROID)
     add_library(${APP_NAME} SHARED ${GAME_SRC} ${GAME_HEADERS})
-    IF(CMAKE_BUILD_TYPE STREQUAL "Release")
+    IF (CMAKE_BUILD_TYPE STREQUAL "Release")
         ADD_CUSTOM_COMMAND(TARGET ${APP_NAME} POST_BUILD COMMAND ${CMAKE_STRIP} lib${APP_NAME}.so)
-    ENDIF()
-else()
+    ENDIF ()
+else ()
     add_executable(${APP_NAME} ${GAME_SRC} ${GAME_HEADERS})
-endif()
+endif ()
 
-target_link_libraries(${APP_NAME} cocos2d ${CMAKE_CURRENT_SOURCE_DIR}/Classes/flatbuffers/libflatbuffers.a)
+target_link_libraries(${APP_NAME} cocos2d box2d ${CMAKE_CURRENT_SOURCE_DIR}/Classes/flatbuffers/libflatbuffers.a)
 
 
-if(MACOSX OR APPLE)
+if (MACOSX OR APPLE)
     set_target_properties(${APP_NAME} PROPERTIES
             MACOSX_BUNDLE 1
             LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib/$<CONFIG>"
@@ -165,14 +170,14 @@ if(MACOSX OR APPLE)
             RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<CONFIG>"
             )
 
-else()
+else ()
 
     set(APP_BIN_DIR "${CMAKE_BINARY_DIR}/bin")
 
     set_target_properties(${APP_NAME} PROPERTIES
-            RUNTIME_OUTPUT_DIRECTORY  "${APP_BIN_DIR}")
+            RUNTIME_OUTPUT_DIRECTORY "${APP_BIN_DIR}")
     add_custom_command(TARGET ${APP_NAME} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/Resources $<TARGET_FILE_DIR:${APP_NAME}>${RES_PREFIX}
             )
 
-endif()
+endif ()

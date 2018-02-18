@@ -105,13 +105,11 @@ bool AppDelegate::applicationDidFinishLaunching() {
     FileUtils::getInstance()->addSearchPath("Resources");
 
 
-    auto scene = Scene::createWithPhysics();
-
-    scene->getPhysicsWorld()->setDebugDrawMask(PhysicsWorld::DEBUGDRAW_ALL);
-
-
+    auto scene = b2Scene::createScene(b2Vec2(0,0));
+    scene->showDebug();
     auto layer = ImGuiEditor::create();
-    scene->addChild(layer);
+    scene->addChild(layer,200);
+
 
     director->runWithScene(scene);
 

@@ -21,7 +21,8 @@ class NodeBuilder {
 public:
 
 
-    void buildNode(Editor::EditorRootT *editorRoot, Node *parent,NodeTreeT *selected);
+    void buildNode(Editor::EditorRootT *editorRoot, Node *parent);
+
 
 private:
     Node *parseSprite(NodeTreeT *nodeTree, Node *parent);

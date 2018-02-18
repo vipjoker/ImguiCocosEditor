@@ -1,5 +1,6 @@
-#include "include/MainScene.h"
-
+#include "MainScene.h"
+#include "b2Sprite.h"
+#include "CastUtil.h"
 bool ImGuiEditor::init() {
     if (!Layer::init()) {
         return false;
@@ -12,31 +13,17 @@ bool ImGuiEditor::init() {
     canvasNode->setPosition(Director::getInstance()->getVisibleSize() / 2 - cocos2d::Size(360, 640) / 2);
     addChild(canvasNode, 5);
 
-    editorOverlay = LayerColor::create(Color4B(0, 0, 0, 0));
-    editorOverlay->setContentSize({360, 640});
-    editorOverlay->setAnchorPoint(cocos2d::Point::ANCHOR_MIDDLE);
-    editorOverlay->setPosition(Director::getInstance()->getVisibleSize() / 2 - cocos2d::Size(360, 640) / 2);
-    addChild(editorOverlay, 10);
-
-    placeholderOverlay = LayerColor::create(Color4B(0, 0, 0, 0));
-    placeholderOverlay->setContentSize({360, 640});
-    placeholderOverlay->setAnchorPoint(cocos2d::Point::ANCHOR_MIDDLE);
-    placeholderOverlay->setPosition(Director::getInstance()->getVisibleSize() / 2 - cocos2d::Size(360, 640) / 2);
-    addChild(placeholderOverlay, 0);
-
-    //getPhysicsWorld()->setDebugDrawMask(PhysicsWorld::DEBUGDRAW_ALL);
 
 
-//    NanoVgNode *nanoVgNode = NanoVgNode::create();
-//    nanoVgNode->setPosition(Vec2(100, 100));
-//    addChild(nanoVgNode);
-    //auto userDef = UserDefault::getInstance();
+
     fileManager.loadFiles("/");
     resourceManager.addTextureCache("ui/btn_grey.png", "default_btn");
     resourceManager.addTextureCache("ui/sel-frame.png", "frame");
     resourceManager.addTextureCache("triangle.png", "play");
     resourceManager.addTextureCache("stop.png", "stop");
+    resourceManager.addTextureCache("ui/rounded_rectangle.png","rrect");
 
+    resourceManager.addTextureCache("HelloWorld.png","helloworld");
 
     const char *fontPath = FileUtils::getInstance()->fullPathForFilename("fonts/round.otf").c_str();
     ImGui::GetIO().Fonts->AddFontFromFileTTF(fontPath, 15.f);
@@ -47,11 +34,11 @@ bool ImGuiEditor::init() {
         showEditWindow();
         drawCreateView();
         drawToolbar();
+        drawHiararchyEditor();
         fileManager.draw();
         resourceManager.draw();
         if (showTest)ImGui::ShowTestWindow(&showTest);
     }, "demoid");
-
 
 
     EventListenerTouchOneByOne *listener = EventListenerTouchOneByOne::create();
@@ -66,13 +53,14 @@ bool ImGuiEditor::init() {
     getEventDispatcher()->addEventListenerWithSceneGraphPriority(keyboard, this);
     scheduleUpdate();
 
+
     auto userDef = UserDefault::getInstance();
-    std::string file  = userDef->getStringForKey(FileManager::FILE_PARAM,"");
-    std::string dir = userDef->getStringForKey(FileManager::DIR_PARAM,"");
+    std::string file = userDef->getStringForKey(FileManager::FILE_PARAM, "");
+    std::string dir = userDef->getStringForKey(FileManager::DIR_PARAM, "");
     std::string path = dir + "/" + file;
     std::cout << "init" << std::endl;
-    printf("File %s\n",file.c_str());
-    printf("Dir %s\n",dir.c_str());
+    printf("File %s\n", file.c_str());
+    printf("Dir %s\n", dir.c_str());
     printf("Path %s\n", path.c_str());
 //
 //    if(!file.empty() && !dir.empty()){
@@ -86,37 +74,36 @@ bool ImGuiEditor::init() {
 
 
 bool ImGuiEditor::onTouchBegin(Touch *touch, Event *unused_event) {
-    lastTouch = canvasNode->convertToNodeSpace(touch->getLocation());
-    if (editorRoot) {
-        for (int i = 0; i < editorRoot->nodes.size(); i++) {
-            NodeTreeT *node = editorRoot->nodes.at(i).get();
 
-            if (EditNodeBuilder::containsPoint(node, lastTouch)) {
-                editableNodeTree = node;
-                editorOverlay->removeAllChildren();
-                Vec2f *v = editableNodeTree->position.get();
-                auto nanoNode = NanoVgNode::createWithTarget(v, [node](Vec2 vec2) {
-                    node->position.reset(new Vec2f(vec2.x, vec2.y));
-                });
-                editorOverlay->addChild(nanoNode);
 
-            }
+    Vec2 lastTouch = canvasNode->convertTouchToNodeSpace(touch);
+
+    if (!ctrlPressed)selectionManager.clearSelection();
+
+    for (Node *n : canvasNode->getChildren()) {
+        if (n->getBoundingBox().containsPoint(lastTouch)) {
+            selectionManager.addSelection(n);
+            return true;
         }
     }
     return true;
-
 }
 
 
 void ImGuiEditor::onTouchMove(Touch *touch, Event *unused_event) {
-    if (dragEnable) {
-        Vec2 delta = canvasNode->convertToNodeSpace(touch->getLocation()) - lastTouch;
-        this->setPosition(this->getPosition() + delta);
-    }
+    if (dragEnable)
+        this->setPosition(this->getPosition() + touch->getDelta());
+    else if (!selectionManager.getNodes().empty())
+        for (Node *selected:selectionManager.getNodes())
+            selected->setPosition(selected->getPosition() + touch->getDelta());
+
+
 }
 
 void ImGuiEditor::onToucnEnd(Touch *touch, Event *unused_event) {
 
+
+    //selectedNodes.clear();
 }
 
 void ImGuiEditor::setupMenu() {
@@ -127,7 +114,7 @@ void ImGuiEditor::setupMenu() {
         if (ImGui::BeginMenu("File")) {
             if (ImGui::MenuItem("Create new"))createPopup = true;
             if (ImGui::MenuItem("Open")) openPopup = true;
-            if (ImGui::MenuItem("Save", __null, false, (editorRoot != nullptr))) openPopupSave = true;
+            if (ImGui::MenuItem("Save")) openPopupSave = true;
             if (ImGui::MenuItem("Exit")) close();
             ImGui::EndMenu();
         }
@@ -144,7 +131,7 @@ void ImGuiEditor::setupMenu() {
 
 
     if (createPopup) {
-        editorRoot = new EditorRootT();
+//        editorRoot = new EditorRootT();
         fileManager.saveFile(std::bind(&ImGuiEditor::onFileSaved, this, placeholders::_1));
         createPopup = false;
     }
@@ -171,28 +158,18 @@ void ImGuiEditor::drawTreeView() {
     ImGui::Begin("Hierarchy");
     if (ImGui::TreeNode("Nodes")) {
         ImGui::Indent();
-        if (editorRoot)
-            for (int i = 0; i < editorRoot->nodes.size(); i++) {
-                NodeTreeT *node = editorRoot->nodes.at(i).get();
+        int counter = 1;
+        for (Node *n: canvasNode->getChildren()) {
 
-
-                ImGui::PushID(i);
-                if (ImGui::Selectable(node->name.empty() ? "Empty" : node->name.c_str())) {
-
-                    editableNodeTree = node;
-                    Vec2f *pos = editableNodeTree->position.get();
-
-                    LOGI("SELECTED x= %f y = %f \n", pos->x(), pos->y());
-                    editorOverlay->removeAllChildren();
-                    auto nanoNode = NanoVgNode::createWithTarget(pos, [node](Vec2 vec2) {
-                        node->position.reset(new Vec2f(vec2.x, vec2.y));
-                    });
-                    editorOverlay->addChild(nanoNode);
-                }
-
-
-                ImGui::PopID();
+            ImGui::PushID(counter++);
+            if (ImGui::Selectable(n->getName().empty() ? "Empty" : n->getName().c_str())) {
+                selectionManager.clearSelection();
+                selectionManager.addSelection(n);
             }
+
+
+            ImGui::PopID();
+        }
         ImGui::Unindent();
         ImGui::TreePop();
 
@@ -232,197 +209,181 @@ void ImGuiEditor::showEditWindow() {
             canvasNode->setColor(Color3B(Color4F(r, g, b, 1)));
         }
     }
-    if (ImGui::CollapsingHeader("Node properties")) {
-        ImGui::Text(!editableNodeTree ? "No node" : editableNodeTree->name.empty() ? "Unknown"
-                                                                                   : editableNodeTree->name.c_str());
 
-        if (editableNodeTree) {
+    if (selectionManager.getNodes().size() == 1) {
+
+        Node *selectedNode = selectionManager.getNodes().at(0);
+        if (ImGui::CollapsingHeader("Node properties")) {
+            ImGui::Text(selectedNode->getName().empty() ? "Unknown" : selectedNode->getName().c_str());
+
 
             char buff[64];
-            const char *orig = editableNodeTree->name.c_str();
+            const char *orig = selectedNode->getName().c_str();
             strcpy(buff, orig);
             ImGui::InputText("Name", buff, 64);
-            editableNodeTree->name = string(buff);
+            selectedNode->setName(string(buff));
+            Vec2 position = selectedNode->getPosition();
+            if (ImGui::DragFloat2("Position", &position.x))selectedNode->setPosition(position);
 
-            if (editableNodeTree->position) {
-                Vec2 vec2(editableNodeTree->position->x(), editableNodeTree->position->y());
-                ImGui::DragFloat2("Position", &vec2.x);
-                editableNodeTree->position.reset(new Vec2f(vec2.x, vec2.y));
-            }
+            Vec2 anchor = selectedNode->getAnchorPoint();
+            if (ImGui::DragFloat2("Anchor", &anchor.x, 0.1f, 0, 1))selectedNode->setAnchorPoint(anchor);
 
-            if (editableNodeTree->anchor) {
-                Vec2 vec2(editableNodeTree->anchor->x(), editableNodeTree->anchor->y());
-                ImGui::DragFloat2("Anchor", &vec2.x, 0.1f, 0, 1);
-                editableNodeTree->anchor.reset(new Vec2f(vec2.x, vec2.y));
-            }
+            cocos2d::Size conntentSize = selectedNode->getContentSize();
+            if (ImGui::DragFloat2("Size", &conntentSize.width))selectedNode->setContentSize(conntentSize);
 
-            if (editableNodeTree->size) {
-                cocos2d::Size size(editableNodeTree->size->width(), editableNodeTree->size->height());
-                ImGui::DragFloat2("Size", &size.width);
-                editableNodeTree->size.reset(new Sizef(size.width, size.height));
-            }
-
-            if (editableNodeTree->scale) {
-                Vec2 vec2(editableNodeTree->scale->x(), editableNodeTree->scale->y());
-                ImGui::DragFloat2("Scale", &vec2.x, 0.01);
-                editableNodeTree->scale.reset(new Vec2f(vec2.x, vec2.y));
-            }
-
-            if (editableNodeTree->color) {
-                Color4F color4F(editableNodeTree->color->r(), editableNodeTree->color->g(),
-                                editableNodeTree->color->b(), editableNodeTree->color->a());
-
-//                colorArray[0] = color4F.r;
-//                colorArray[1] = color4F.g;
-//                colorArray[2] = color4F.b;
+            Vec2 vec2(selectedNode->getScaleX(), selectedNode->getScaleY());
+            if (ImGui::DragFloat2("Scale", &vec2.x, 0.01))selectedNode->setScale(vec2.x, vec2.y);
 
 
-                if (ImGui::ColorEdit3("Color", colorArray)) {
-                    Color4F c(colorArray[0], colorArray[1], colorArray[2], colorArray[3]);
-                    editableNodeTree->color.reset(new Vec4f(c.a, c.r, c.g, c.b));
-                }
+//            Color4F color4F(editableNodeTree->color->r(), editableNodeTree->color->g(),
+//                            editableNodeTree->color->b(), editableNodeTree->color->a());
+//
+////                colorArray[0] = color4F.r;
+////                colorArray[1] = color4F.g;
+////                colorArray[2] = color4F.b;
+//
+//
+//            if (ImGui::ColorEdit3("Color", colorArray)) {
+//                Color4F c(colorArray[0], colorArray[1], colorArray[2], colorArray[3]);
+//                editableNodeTree->color.reset(new Vec4f(c.a, c.r, c.g, c.b));
+//            }
 
-            }
-            int rotation = editableNodeTree->rotation;
+            int rotation = selectedNode->getRotation();
             if (ImGui::DragInt("Rotation", &rotation)) {
-                editableNodeTree->rotation = rotation;
+                selectedNode->setRotation(rotation);
             }
 
-            int zOrder = editableNodeTree->zOrder;
+            int zOrder = selectedNode->getLocalZOrder();
             ImGui::InputInt("Z order", &zOrder);
-            editableNodeTree->zOrder = zOrder;
+            selectedNode->setLocalZOrder(zOrder);
 
-            ImGui::Checkbox("Enable physics", &editableNodeTree->enablePhysics);
+            //ImGui::Checkbox("Enable physics", &editableNodeTree->enablePhysics);
+
+
         }
 
 
-    }
-
-    if (ImGui::CollapsingHeader("Physics")) {
-
-
-        if (editableNodeTree && editableNodeTree->enablePhysics) {
-            const char *items[] = {
-                    "Static", "Dynamic", "Kinematic"
-            };
+        if(CastUtil::getType(selectedNode) == CastType::LABEL) {
+            if (ImGui::CollapsingHeader("Label properties")) {
 
 
-            if (!editableNodeTree->physics) {
-                editNodeBuilder.createDefaultPhysics(editableNodeTree);
-            }
 
-            BodyT *body = editableNodeTree->physics.get();
-            int type = body->type;
-            //static int position = 0;
-            if (ImGui::Combo("Types", &type, items, 3)) body->type = BodyType(type);
-
-
-            Vec2 pos(body->pos->x(), body->pos->y());
-            if (ImGui::DragFloat2("Body position", &pos.x))body->pos.reset(new Vec2f(pos.x, pos.y));
-
-            ImGui::Text("Points");
-
-
-            for (int i = 0; i < body->fixtures.size(); i++) {
-
-                if (ImGui::TreeNode(StringUtils::format("Fixture %d", i).c_str())) {
-
-
-                    FixtureT *fixtureT = body->fixtures[i].get();
-
-
-                    const char *fixtureTypes[] = {
-                            "Polygon", "Circle", "Line"
-                    };
-                    int fixtureType = fixtureT->type;
-                    if (ImGui::Combo("Fixture type", &fixtureType, fixtureTypes, 3))
-                        fixtureT->type = FixtureType(fixtureType);
-
-
-                    for (int j = 0; j < fixtureT->points.size(); j++) {
-                        const char *label = StringUtils::format("Point %d", j).c_str();
-                        Vec2 fixPos(fixtureT->points[j].x(), fixtureT->points[j].y());
-                        if (ImGui::DragFloat2(label, &fixPos.x))fixtureT->points[j] = Vec2f(fixPos.x, fixPos.y);
-                        ImGui::SameLine();
-                        ImGui::PushID(j);
-                        if (ImGui::Button("x")) {
-                            fixtureT->points.erase(fixtureT->points.begin() + j);
-                        }
-                        ImGui::PopID();
-                    }
-
-                    if (ImGui::Button("Add point")) {
-                        fixtureT->points.push_back(Vec2f(0, 0));
-                    }
-
-                    ImGui::TreePop();
-                }
             }
         }
+
+        if(CastUtil::getType(selectedNode) == CastType::SPRITE){
+            if(ImGui::CollapsingHeader("Sprite properties")){
+
+
+            }
+        }
+
+
+
+//
+//        if (ImGui::CollapsingHeader("Physics")) {
+//
+//
+//            if (editableNodeTree && editableNodeTree->enablePhysics) {
+//                const char *items[] = {
+//                        "Static", "Dynamic", "Kinematic"
+//                };
+//
+//
+//                if (!editableNodeTree->physics) {
+//                    editNodeBuilder.createDefaultPhysics(editableNodeTree);
+//                }
+//
+//                BodyT *body = editableNodeTree->physics.get();
+//                int type = body->type;
+//                //static int position = 0;
+//                if (ImGui::Combo("Types", &type, items, 3)) body->type = BodyType(type);
+//
+//
+//                Vec2 pos(body->pos->x(), body->pos->y());
+//                if (ImGui::DragFloat2("Body position", &pos.x))body->pos.reset(new Vec2f(pos.x, pos.y));
+//
+//                ImGui::Text("Points");
+//
+//
+//                for (int i = 0; i < body->fixtures.size(); i++) {
+//
+//                    if (ImGui::TreeNode(StringUtils::format("Fixture %d", i).c_str())) {
+//
+//
+//                        FixtureT *fixtureT = body->fixtures[i].get();
+//
+//
+//                        const char *fixtureTypes[] = {
+//                                "Polygon", "Circle", "Line"
+//                        };
+//                        int fixtureType = fixtureT->type;
+//                        if (ImGui::Combo("Fixture type", &fixtureType, fixtureTypes, 3))
+//                            fixtureT->type = FixtureType(fixtureType);
+//
+//
+//                        for (int j = 0; j < fixtureT->points.size(); j++) {
+//                            const char *label = StringUtils::format("Point %d", j).c_str();
+//                            Vec2 fixPos(fixtureT->points[j].x(), fixtureT->points[j].y());
+//                            if (ImGui::DragFloat2(label, &fixPos.x))fixtureT->points[j] = Vec2f(fixPos.x, fixPos.y);
+//                            ImGui::SameLine();
+//                            ImGui::PushID(j);
+//                            if (ImGui::Button("x")) {
+//                                fixtureT->points.erase(fixtureT->points.begin() + j);
+//                            }
+//                            ImGui::PopID();
+//                        }
+//
+//                        if (ImGui::Button("Add point")) {
+//                            fixtureT->points.push_back(Vec2f(0, 0));
+//                        }
+//
+//                        ImGui::TreePop();
+//                    }
+//                }
+//            }
+//        }
+
     }
 
     ImGui::End();
 
 }
 
-//Draggable list
-//
-//
-//    // User state
-//    const int COUNT = 5;
-//    static const char *items_data[COUNT] = {"Item One", "Item Two", "Item Three", "Item Four", "Item Five"};
-//    static int items_list[COUNT] = {0, 1, 2, 3, 4};
-//
-// Render + dragging
-//    for (int n = 0; n < COUNT; n++) {
-//        int item_no = items_list[n];
-//        ImGui::Selectable(items_data[item_no]);
-//
-//        if (ImGui::IsItemActive() && !ImGui::IsItemHovered()) {
-//            float drag_dy = ImGui::GetMouseDragDelta(0).y;
-//            if (drag_dy < 0.0f && n > 0) {
-//                // Swap
-//                items_list[n] = items_list[n - 1];
-//                items_list[n - 1] = item_no;
-//                ImGui::ResetMouseDragDelta();
-//            } else if (drag_dy > 0.0f && n < COUNT - 1) {
-//                items_list[n] = items_list[n + 1];
-//                items_list[n + 1] = item_no;
-//                ImGui::ResetMouseDragDelta();
-//            }
-//        }
-//    }
-
 void ImGuiEditor::update(float dt) {
     Node::update(dt);
 
-    if (play) {
-        getScene()->getPhysicsWorld()->step(dt);
-    } else if (editorRoot) {
-        canvasNode->removeAllChildren();
-        placeholderOverlay->removeAllChildren();
-        nodeBuilder.buildNode(editorRoot, canvasNode, editableNodeTree);
+//    if (play) {
+//        getScene()->getPhysicsWorld()->step(dt);
+//    }
 
 
-        for (int i = 0; i < editorRoot->nodes.size(); i++) {
-            NodeTreeT *node = editorRoot->nodes.at(i).get();
-
-            if (editableNodeTree == node) {
-                auto sprite = ui::Scale9Sprite::createWithSpriteFrameName("frame");
-                sprite->setContentSize(
-                        node->size->width() == 0 ? cocos2d::Size(100, 100) : cocos2d::Size(node->size->width() + 10,
-                                                                                           node->size->height() + 10));
-                sprite->setAnchorPoint(cocos2d::Point::ANCHOR_BOTTOM_LEFT);
-                sprite->setPosition(Vec2(node->position->x(), node->position->y()));
-                sprite->setRotation(node->rotation);
-                placeholderOverlay->addChild(sprite);
-            }
-        }
-    }
+//    else if (editorRoot) {
+//        canvasNode->removeAllChildren();
+//        placeholderOverlay->removeAllChildren();
+//        nodeBuilder.buildNode(editorRoot, canvasNode, editableNodeTree);
+//
+//
+//        for (int i = 0; i < editorRoot->nodes.size(); i++) {
+//            NodeTreeT *node = editorRoot->nodes.at(i).get();
+//
+//            if (editableNodeTree == node) {
+//
+//                cocos2d::Size size(
+//                        node->size->width() == 0 ? cocos2d::Size(100, 100) : cocos2d::Size(node->size->width() + 10,
+//                                                                                           node->size->height() + 10));
+//
+//                cocos2d::Vec2 position(node->position->x(), node->position->y());
+//
+//            }
+//        }
+//    }
 }
 
 void ImGuiEditor::onFileSaved(std::string path) {
-    ModelLoader::saveModel(path, editorRoot);
+    EditorRootPointer editorRootPointer = editNodeBuilder.saveNode(canvasNode);
+
+    ModelLoader::saveModel(path, editorRootPointer);
     LOGI("Saved %s\n", path.c_str());
 }
 
@@ -431,8 +392,9 @@ void ImGuiEditor::onFileLoaded(std::string path) {
 
     resourceManager.loadPath(fileManager.getCurrentDir(),
                              std::bind(&ImGuiEditor::onResourceSelected, this, placeholders::_1));
-    delete editorRoot;
-    editorRoot = ModelLoader::loadModel(path);
+
+    EditorRootPointer editorRoot = ModelLoader::loadModel(path);
+    nodeBuilder.buildNode(editorRoot, canvasNode);
 
 
     LOGI("Loaded %s\n", path.c_str());
@@ -444,9 +406,10 @@ void ImGuiEditor::onFileLoaded(std::string path) {
 
 void ImGuiEditor::onResourceSelected(std::string resource) {
 
+    cocos2d::Sprite *sprt = cocos2d::Sprite::createWithSpriteFrameName(resource);
+    canvasNode->addChild(sprt);
 
-    NodeTreeT *node = editNodeBuilder.createSpriteNode(resource);
-    editorRoot->nodes.push_back(unique_ptr<NodeTreeT>(node));
+
 }
 
 void ImGuiEditor::drawCreateView() {
@@ -464,17 +427,31 @@ void ImGuiEditor::drawCreateView() {
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImColor(53, 155, 92));
 
 
-    ImGui::Button("Layout");
+    if(ImGui::Button("Layout")){
+      cocos2d::ui::Layout *layout=  cocos2d::ui::Layout::create();
+        layout->setContentSize(cocos2d::Size(100, 100));
+        layout->setBackGroundColorType(cocos2d::ui::Layout::BackGroundColorType::SOLID);
+        layout->setBackGroundColor(Color3B::WHITE);
+        layout->setBackGroundColorOpacity(100);
+        canvasNode->addChild(layout);
+
+    }
     if (ImGui::IsItemHovered())
         ImGui::SetTooltip("Creates new button node");
     ImGui::SameLine();
 
-    ImGui::Button("Sprite");
+    if(ImGui::Button("Sprite")){
+        cocos2d::Sprite *sprite = cocos2d::Sprite::createWithSpriteFrameName("helloworld");
+        canvasNode->addChild(sprite);
+    }
     if (ImGui::IsItemHovered())
         ImGui::SetTooltip("Creates new sprite node");
 
     ImGui::SameLine();
-    ImGui::Button("Label");
+    if(ImGui::Button("Label")){
+        cocos2d::Label *label = cocos2d::Label::createWithTTF("Hello world","fonts/round.otf",30);
+        canvasNode->addChild(label);
+    }
     if (ImGui::IsItemHovered())
         ImGui::SetTooltip("Creates new label node");
 
@@ -498,7 +475,6 @@ void ImGuiEditor::drawCreateView() {
 
 
     ImGui::SameLine();
-
     ImGui::Button("Joint");
     if (ImGui::IsItemHovered())
         ImGui::SetTooltip("Creates new joint");
@@ -547,16 +523,15 @@ void ImGuiEditor::drawToolbar() {
     ImGui::Begin("Toolbar", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
 
     ImGui::Text("Window size %f %f ", size.x, size.y);
-    ImGui::Text("Last touch %f %f ", lastTouch.x, lastTouch.y);
 //    ImGui::InputInt("Precisson",)
 
 
     std::string settings = cocos2d::UserDefault::getInstance()->getStringForKey("UserSettings");
     char buff[64];
-    strcpy(buff,settings.c_str());
+    strcpy(buff, settings.c_str());
 
-    if(ImGui::InputText("User settings ",buff,64)){
-        cocos2d::UserDefault::getInstance()->setStringForKey("UserSettings",std::string(buff));
+    if (ImGui::InputText("User settings ", buff, 64)) {
+        cocos2d::UserDefault::getInstance()->setStringForKey("UserSettings", std::string(buff));
     }
 
     if (ImGui::ImageButton(ImVec2(20, 20), "play", play)) {
@@ -575,7 +550,7 @@ void ImGuiEditor::drawToolbar() {
 void ImGuiEditor::keyBoardPressed(EventKeyboard::KeyCode keyCode, Event *event) {
     if (keyCode == EventKeyboard::KeyCode::KEY_SPACE) {
         this->dragEnable = true;
-    } else if(keyCode == EventKeyboard::KeyCode::KEY_CTRL){
+    } else if (keyCode == EventKeyboard::KeyCode::KEY_CTRL) {
         this->ctrlPressed = true;
     }
 
@@ -584,10 +559,52 @@ void ImGuiEditor::keyBoardPressed(EventKeyboard::KeyCode keyCode, Event *event) 
 void ImGuiEditor::keyBoardReleased(EventKeyboard::KeyCode keyCode, Event *event) {
     if (keyCode == EventKeyboard::KeyCode::KEY_SPACE) {
         this->dragEnable = false;
-    } else if(keyCode == EventKeyboard::KeyCode::KEY_CTRL){
+    } else if (keyCode == EventKeyboard::KeyCode::KEY_CTRL) {
         this->ctrlPressed = false;
     }
 }
+
+void ImGuiEditor::drawHiararchyEditor() {
+    //Draggable list
+//
+//
+//    // User state
+    const int COUNT = 5;
+    static const char *items_data[COUNT] = {"Item One", "Item Two", "Item Three", "Item Four", "Item Five"};
+    static int items_list[COUNT] = {0, 1, 2, 3, 4};
+
+// Render + dragging
+    for (int n = 0; n < COUNT; n++) {
+        int item_no = items_list[n];
+        ImGui::Selectable(items_data[item_no]);
+
+        if (ImGui::IsItemActive() && !ImGui::IsItemHovered()) {
+            float drag_dy = ImGui::GetMouseDragDelta(0).y;
+            LOGI("Delta %f \n", drag_dy);
+            if (drag_dy < 0.0f && n > 0) {
+                items_list[n] = items_list[n - 1];
+                items_list[n - 1] = item_no;
+                ImGui::ResetMouseDragDelta();
+            } else if (drag_dy > 0.0f && n < COUNT - 1) {
+                items_list[n] = items_list[n + 1];
+                items_list[n + 1] = item_no;
+                ImGui::ResetMouseDragDelta();
+            }
+        }
+    }
+}
+
+void ImGuiEditor::onEnter() {
+    Node::onEnter();
+
+    b2Sprite *sprite = b2Sprite::create();
+    sprite->initWithFile("stop.png");
+    sprite->setPosition(200, 200);
+    addChild(sprite);
+
+}
+
+
 
 
 

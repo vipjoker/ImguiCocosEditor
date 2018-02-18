@@ -7,13 +7,13 @@
 
 #include "cocos2d.h"
 #include "ui/CocosGUI.h"
-enum NodeType{
+enum CastType{
     NODE,SPRITE,LABEL,LAYOUT,BUTTON
 };
 
 class CastUtil {
 public:
-    static NodeType getType(cocos2d::Node *node);
+    static CastType getType(cocos2d::Node *node);
 };
 
 

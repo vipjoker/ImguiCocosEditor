@@ -18,6 +18,11 @@ public:
     void createDefaultPhysics(Editor::NodeTreeT* nodeTreeT);
 
     static bool containsPoint(Editor::NodeTreeT *node, cocos2d::Vec2 point);
+
+    Editor::EditorRootT* saveNode(cocos2d::Node *pColor);
+
+
+
 };
 
 

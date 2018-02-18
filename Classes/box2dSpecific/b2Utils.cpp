@@ -10,10 +10,20 @@
 
 
 namespace helper {
+
+
+
+    float toB2d(float length){
+        return length/B2D_RATIO;
+    }
+
+    float fromB2d(float length){
+        return length * B2D_RATIO;
+    }
+
+
     
-    
-    
-    Vec2 toVec2(b2Vec2 &vec){
+    Vec2 toVec2(const b2Vec2 &vec){
         return Vec2(vec.x,vec.y) * B2D_RATIO;
     }
     b2Vec2 tob2Vec(Vec2 vec){
@@ -21,6 +31,8 @@ namespace helper {
         b2Vec2 v(vec.x,vec.y) ;
         return v;
     }
+
+
     
     
     enum _entityCategory {

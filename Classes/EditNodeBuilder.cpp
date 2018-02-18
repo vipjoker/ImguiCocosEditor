@@ -2,8 +2,11 @@
 // Created by oleh on 28.11.17.
 //
 
+#include <iostream>
+#include <cocos/ui/UIButton.h>
 #include "include/EditNodeBuilder.h"
-
+USING_NS_CC;
+using namespace std;
 Editor::NodeTreeT *EditNodeBuilder::createSpriteNode(string spriteName) {
     NodeTreeT *node = createNode();
     cocos2d::SpriteFrame *spriteFrame =  cocos2d::SpriteFrameCache::getInstance()->getSpriteFrameByName(spriteName);
@@ -83,4 +86,34 @@ bool EditNodeBuilder::containsPoint(Editor::NodeTreeT *node, cocos2d::Vec2 point
     return r.containsPoint(point);
 //    return true;
 
+}
+
+
+Editor::EditorRootT* EditNodeBuilder::saveNode(Node *pColor) {
+    for(Node *n : pColor->getChildren()){
+        if(!n->getChildren().empty()){
+            saveNode(n);
+        }
+
+
+//        cocos2d::Sprite *s = dynamic_cast<cocos2d::Sprite*>(n);
+//        cocos2d::Node *node = dynamic_cast<cocos2d::Node*>(n);
+        bool isSprite = typeid(n) == typeid(cocos2d::Sprite);
+        bool isNode = typeid(n) == typeid(cocos2d::Node);
+        bool isLabel = typeid(n) == typeid(cocos2d::Label);
+        bool isButton = typeid(n) == typeid(cocos2d::ui::Button);
+
+
+        cout << "Type "<<typeid(cocos2d::Sprite).name() << endl;
+        if(isSprite){
+            cout << "Sprite found  " << endl;
+        }
+
+        if(isNode){
+            cout << "Node found  " << endl;
+        }
+
+    }
+
+    return nullptr;
 }
