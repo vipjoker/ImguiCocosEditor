@@ -29,7 +29,14 @@ void SelectionManager::addSelection(cocos2d::Node *node) {
     }
 }
 
-const Vector<cocos2d::Node *> SelectionManager::getNodes() {
-    return nodes;
+Vector<cocos2d::Node *> *SelectionManager::getNodes() {
+    return &nodes;
+}
+
+cocos2d::Vec2 SelectionManager::pointInView(cocos2d::Touch *touch, cocos2d::Node *node) {
+    Vec2 lastTouch = node->convertTouchToNodeSpace(touch);
+    Vec2 p = node->getScene()->getDefaultCamera()->convertToNodeSpace(Director::getInstance()->getVisibleSize() / 2);
+    Vec2 pointInView = lastTouch - p;
+    return pointInView;
 }
 

@@ -12,6 +12,10 @@
 #include "SelectionAction.h"
 #include "b2Scene.h"
 #include "b2Utils.hpp"
+#include "EditorAction.h"
+#include "DragNDropAction.h"
+#include "DragAction.h"
+#include "CameraAction.h"
 
 USING_NS_CC;
 using namespace Editor;
@@ -27,15 +31,23 @@ class ImGuiEditor : public cocos2d::Layer {
     NodeBuilder nodeBuilder;
     EditNodeBuilder editNodeBuilder;
 
+    DragNDropAction dragNDropAction;
+    DragAction dragAction;
+    CameraAction cameraAction;
+
     LayerColor *canvasNode;
 
     bool dragEnable = false;
     bool ctrlPressed = false;
+    bool c_pressed = false;
+    bool no_button_pressed = true;
+
+
     bool play = false;
-
     SelectionManager selectionManager;
-
     Logger logger;
+
+    std::vector<EditorAction*> editorActions;
 
 public:
 
@@ -78,6 +90,7 @@ public:
     void keyBoardPressed(EventKeyboard::KeyCode keyCode, Event *event);
 
     void keyBoardReleased(EventKeyboard::KeyCode keyCode, Event *event);
+
 };
 
 #endif // __HELLOWORLD_SCENE_H__

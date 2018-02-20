@@ -11,3 +11,4 @@ out
 gen
 .DS_Store
 .cocos-project.json
+proj.linux/

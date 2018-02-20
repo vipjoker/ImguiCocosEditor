@@ -15,7 +15,9 @@ enum CastType{
 class CastUtil {
 public:
     static CastType getType(cocos2d::Node *node);
+
+    static std::string asString(CastType type);
 };
 
 
-#endif //TEMPLATE_CASTUTIL_H
+#endif

@@ -1,6 +1,7 @@
 #include "MainScene.h"
 #include "b2Sprite.h"
 #include "CastUtil.h"
+
 bool ImGuiEditor::init() {
     if (!Layer::init()) {
         return false;
@@ -14,16 +15,14 @@ bool ImGuiEditor::init() {
     addChild(canvasNode, 5);
 
 
-
-
     fileManager.loadFiles("/");
     resourceManager.addTextureCache("ui/btn_grey.png", "default_btn");
     resourceManager.addTextureCache("ui/sel-frame.png", "frame");
     resourceManager.addTextureCache("triangle.png", "play");
     resourceManager.addTextureCache("stop.png", "stop");
-    resourceManager.addTextureCache("ui/rounded_rectangle.png","rrect");
+    resourceManager.addTextureCache("ui/rounded_rectangle.png", "rrect");
 
-    resourceManager.addTextureCache("HelloWorld.png","helloworld");
+    resourceManager.addTextureCache("HelloWorld.png", "helloworld");
 
     const char *fontPath = FileUtils::getInstance()->fullPathForFilename("fonts/round.otf").c_str();
     ImGui::GetIO().Fonts->AddFontFromFileTTF(fontPath, 15.f);
@@ -75,34 +74,39 @@ bool ImGuiEditor::init() {
 
 bool ImGuiEditor::onTouchBegin(Touch *touch, Event *unused_event) {
 
+    Vec2 pointInView = SelectionManager::pointInView(touch,canvasNode);
 
-    Vec2 lastTouch = canvasNode->convertTouchToNodeSpace(touch);
 
     if (!ctrlPressed)selectionManager.clearSelection();
 
+
+//    if(c_pressed)dragNDropAction.onBegin(touch,)
+
     for (Node *n : canvasNode->getChildren()) {
-        if (n->getBoundingBox().containsPoint(lastTouch)) {
+        if (n->getBoundingBox().containsPoint(pointInView)) {
             selectionManager.addSelection(n);
             return true;
         }
     }
+
     return true;
 }
 
 
 void ImGuiEditor::onTouchMove(Touch *touch, Event *unused_event) {
-    if (dragEnable)
-        this->setPosition(this->getPosition() + touch->getDelta());
-    else if (!selectionManager.getNodes().empty())
-        for (Node *selected:selectionManager.getNodes())
-            selected->setPosition(selected->getPosition() + touch->getDelta());
-
-
+    if (dragEnable) {
+        cameraAction.onMove(touch,canvasNode, nullptr);
+    }else if(c_pressed && selectionManager.getNodes()->size() == 1){
+        dragNDropAction.onMove(touch,selectionManager.getNodes()->at(0),&canvasNode->getChildren());
+    }else if (!selectionManager.getNodes()->empty())
+        dragAction.onMove(touch, nullptr,selectionManager.getNodes());
 }
 
 void ImGuiEditor::onToucnEnd(Touch *touch, Event *unused_event) {
 
-
+    if(c_pressed && selectionManager.getNodes()->size() == 1){
+        dragNDropAction.onEnd(touch,selectionManager.getNodes()->at(0),&canvasNode->getChildren());
+    }
     //selectedNodes.clear();
 }
 
@@ -161,8 +165,12 @@ void ImGuiEditor::drawTreeView() {
         int counter = 1;
         for (Node *n: canvasNode->getChildren()) {
 
+            CastType type = CastUtil::getType(n);
+            std::string name = StringUtils::format("%s : %s", n->getName().empty() ? "Empty" : n->getName().c_str(),
+                                                   CastUtil::asString(type).c_str());
+
             ImGui::PushID(counter++);
-            if (ImGui::Selectable(n->getName().empty() ? "Empty" : n->getName().c_str())) {
+            if (ImGui::Selectable(name.c_str())) {
                 selectionManager.clearSelection();
                 selectionManager.addSelection(n);
             }
@@ -210,9 +218,9 @@ void ImGuiEditor::showEditWindow() {
         }
     }
 
-    if (selectionManager.getNodes().size() == 1) {
+    if (selectionManager.getNodes()->size() == 1) {
 
-        Node *selectedNode = selectionManager.getNodes().at(0);
+        Node *selectedNode = selectionManager.getNodes()->at(0);
         if (ImGui::CollapsingHeader("Node properties")) {
             ImGui::Text(selectedNode->getName().empty() ? "Unknown" : selectedNode->getName().c_str());
 
@@ -263,26 +271,24 @@ void ImGuiEditor::showEditWindow() {
         }
 
 
-        if(CastUtil::getType(selectedNode) == CastType::LABEL) {
+        if (CastUtil::getType(selectedNode) == CastType::LABEL) {
             if (ImGui::CollapsingHeader("Label properties")) {
                 cocos2d::Label *l = dynamic_cast<cocos2d::Label *>(selectedNode);
 
                 char buff[64];
                 const char *label = l->getString().c_str();
                 strcpy(buff, label);
-                if(ImGui::InputText("Name", buff, 64)) l->setString(string(buff));
+                if (ImGui::InputText("Name", buff, 64)) l->setString(string(buff));
 
 
-                l->getTextAlignment()
-
-
+                l->getTextAlignment();
 
 
             }
         }
 
-        if(CastUtil::getType(selectedNode) == CastType::SPRITE){
-            if(ImGui::CollapsingHeader("Sprite properties")){
+        if (CastUtil::getType(selectedNode) == CastType::SPRITE) {
+            if (ImGui::CollapsingHeader("Sprite properties")) {
 
 
             }
@@ -437,8 +443,8 @@ void ImGuiEditor::drawCreateView() {
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImColor(53, 155, 92));
 
 
-    if(ImGui::Button("Layout")){
-      cocos2d::ui::Layout *layout=  cocos2d::ui::Layout::create();
+    if (ImGui::Button("Layout")) {
+        cocos2d::ui::Layout *layout = cocos2d::ui::Layout::create();
         layout->setContentSize(cocos2d::Size(100, 100));
         layout->setBackGroundColorType(cocos2d::ui::Layout::BackGroundColorType::SOLID);
         layout->setBackGroundColor(Color3B::WHITE);
@@ -450,7 +456,7 @@ void ImGuiEditor::drawCreateView() {
         ImGui::SetTooltip("Creates new button node");
     ImGui::SameLine();
 
-    if(ImGui::Button("Sprite")){
+    if (ImGui::Button("Sprite")) {
         cocos2d::Sprite *sprite = cocos2d::Sprite::createWithSpriteFrameName("helloworld");
         canvasNode->addChild(sprite);
     }
@@ -458,8 +464,8 @@ void ImGuiEditor::drawCreateView() {
         ImGui::SetTooltip("Creates new sprite node");
 
     ImGui::SameLine();
-    if(ImGui::Button("Label")){
-        cocos2d::Label *label = cocos2d::Label::createWithTTF("Hello world","fonts/round.otf",30);
+    if (ImGui::Button("Label")) {
+        cocos2d::Label *label = cocos2d::Label::createWithTTF("Hello world", "fonts/round.otf", 30);
         canvasNode->addChild(label);
     }
     if (ImGui::IsItemHovered())
@@ -544,6 +550,16 @@ void ImGuiEditor::drawToolbar() {
         cocos2d::UserDefault::getInstance()->setStringForKey("UserSettings", std::string(buff));
     }
 
+
+    if (ImGui::Button("Move")) {
+
+    }
+    static bool align = false;
+    if (ImGui::Checkbox("Align", &align)) {
+
+    }
+
+
     if (ImGui::ImageButton(ImVec2(20, 20), "play", play)) {
         play = true;
     }
@@ -558,10 +574,15 @@ void ImGuiEditor::drawToolbar() {
 }
 
 void ImGuiEditor::keyBoardPressed(EventKeyboard::KeyCode keyCode, Event *event) {
+
     if (keyCode == EventKeyboard::KeyCode::KEY_SPACE) {
         this->dragEnable = true;
     } else if (keyCode == EventKeyboard::KeyCode::KEY_CTRL) {
         this->ctrlPressed = true;
+    } else if (keyCode == EventKeyboard::KeyCode::KEY_C){
+        this->c_pressed = true;
+    }else{
+
     }
 
 }
@@ -571,6 +592,10 @@ void ImGuiEditor::keyBoardReleased(EventKeyboard::KeyCode keyCode, Event *event)
         this->dragEnable = false;
     } else if (keyCode == EventKeyboard::KeyCode::KEY_CTRL) {
         this->ctrlPressed = false;
+    }else if(keyCode == EventKeyboard::KeyCode::KEY_C){
+        this->c_pressed = false;
+    }else{
+
     }
 }
 

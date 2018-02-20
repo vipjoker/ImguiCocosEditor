@@ -7,11 +7,16 @@
 
 #include "cocos2d.h"
 
-class SelectionManager{
-    cocos2d::Vector<cocos2d::Node*> nodes;
+class SelectionManager {
+    cocos2d::Vector<cocos2d::Node *> nodes;
 public:
     void clearSelection();
+
     void addSelection(cocos2d::Node *node);
-    const cocos2d::Vector<cocos2d::Node*> getNodes();
+
+    cocos2d::Vector<cocos2d::Node *> *getNodes();
+
+    static cocos2d::Vec2 pointInView(cocos2d::Touch *touch, cocos2d::Node *node);
 };
-#endif //TEMPLATE_SELECTIONACTION_H
+
+#endif
