@@ -16,16 +16,22 @@
 #include "DragNDropAction.h"
 #include "DragAction.h"
 #include "CameraAction.h"
+#include "b2Sprite.h"
+#include "CastUtil.h"
+#include "EditorExtensions.h"
+
 
 USING_NS_CC;
 using namespace Editor;
-
 class ImGuiEditor : public cocos2d::Layer {
 
     float color[3];
     bool showTest = false;
     bool showLog = false;
     int precission = 0;
+    b2Scene *scene;
+    cocos2d::Label *info;
+    cocos2d::Vec2 canvasPosition;
     ResourceManager resourceManager;
     FileManager fileManager;
     NodeBuilder nodeBuilder;
@@ -48,6 +54,7 @@ class ImGuiEditor : public cocos2d::Layer {
     Logger logger;
 
     std::vector<EditorAction*> editorActions;
+    cocos2d::Vector<cocos2d::Node*> flatNodes;
 
 public:
 

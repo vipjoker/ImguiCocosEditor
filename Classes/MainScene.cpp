@@ -1,6 +1,4 @@
 #include "MainScene.h"
-#include "b2Sprite.h"
-#include "CastUtil.h"
 
 bool ImGuiEditor::init() {
     if (!Layer::init()) {
@@ -11,7 +9,9 @@ bool ImGuiEditor::init() {
     canvasNode = LayerColor::create(Color4B(255, 255, 255, 100));
     canvasNode->setContentSize({360, 640});
     canvasNode->setAnchorPoint(cocos2d::Point::ANCHOR_MIDDLE);
-    canvasNode->setPosition(Director::getInstance()->getVisibleSize() / 2 - cocos2d::Size(360, 640) / 2);
+    canvasPosition = Director::getInstance()->getVisibleSize() / 2 - cocos2d::Size(360, 640) / 2;
+    canvasNode->setPosition(canvasPosition);
+
     addChild(canvasNode, 5);
 
 
@@ -23,6 +23,15 @@ bool ImGuiEditor::init() {
     resourceManager.addTextureCache("ui/rounded_rectangle.png", "rrect");
 
     resourceManager.addTextureCache("HelloWorld.png", "helloworld");
+    resourceManager.addTextureCache("circle.png", "circle");
+
+
+    info = cocos2d::Label::createWithTTF("HELLO", "fonts/arial.ttf", 20);
+    info->setAnchorPoint(Point::ANCHOR_TOP_RIGHT);
+    info->setTextColor(Color4B::WHITE);
+    info->setPosition(Vec2(Director::getInstance()->getVisibleSize()) - Vec2(20, 20));
+    addChild(info);
+
 
     const char *fontPath = FileUtils::getInstance()->fullPathForFilename("fonts/round.otf").c_str();
     ImGui::GetIO().Fonts->AddFontFromFileTTF(fontPath, 15.f);
@@ -74,7 +83,7 @@ bool ImGuiEditor::init() {
 
 bool ImGuiEditor::onTouchBegin(Touch *touch, Event *unused_event) {
 
-    Vec2 pointInView = SelectionManager::pointInView(touch,canvasNode);
+    Vec2 pointInView = SelectionManager::pointInView(touch, canvasNode);
 
 
     if (!ctrlPressed)selectionManager.clearSelection();
@@ -82,31 +91,50 @@ bool ImGuiEditor::onTouchBegin(Touch *touch, Event *unused_event) {
 
 //    if(c_pressed)dragNDropAction.onBegin(touch,)
 
-    for (Node *n : canvasNode->getChildren()) {
-        if (n->getBoundingBox().containsPoint(pointInView)) {
-            selectionManager.addSelection(n);
-            return true;
-        }
-    }
+
+
+    TraverseUtil::traversAllChildren(canvasNode, [this](Node *n) {
+        flatNodes.pushBack(n);
+    });
+    Node *n = dragNDropAction.onBegin(touch, &flatNodes);
+    if (n)selectionManager.addSelection(n);
+//    for (Node *n : canvasNode->getChildren()) {
+//        if (n->getBoundingBox().containsPoint(pointInView)) {
+//            selectionManager.addSelection(n);
+//            return true;
+//        }
+//    }
 
     return true;
 }
 
 
 void ImGuiEditor::onTouchMove(Touch *touch, Event *unused_event) {
+
+
     if (dragEnable) {
-        cameraAction.onMove(touch,canvasNode, nullptr);
-    }else if(c_pressed && selectionManager.getNodes()->size() == 1){
-        dragNDropAction.onMove(touch,selectionManager.getNodes()->at(0),&canvasNode->getChildren());
-    }else if (!selectionManager.getNodes()->empty())
-        dragAction.onMove(touch, nullptr,selectionManager.getNodes());
+        cameraAction.onMove(touch, canvasNode, nullptr);
+    } else if (c_pressed && selectionManager.getNodes()->size() == 1) {
+        dragNDropAction.onMove(touch, selectionManager.getNodes()->at(0), &flatNodes);
+    } else if (!selectionManager.getNodes()->empty())
+        dragAction.onMove(touch, nullptr, selectionManager.getNodes());
 }
 
 void ImGuiEditor::onToucnEnd(Touch *touch, Event *unused_event) {
 
-    if(c_pressed && selectionManager.getNodes()->size() == 1){
-        dragNDropAction.onEnd(touch,selectionManager.getNodes()->at(0),&canvasNode->getChildren());
+
+    Vec2 canvasSpace = canvasNode->convertTouchToNodeSpace(touch);
+    info->setString(StringUtils::format("Pos %f %f \nCanvas %f %f",
+                                        touch->getLocation().x, touch->getLocation().y,
+                                        canvasSpace.x, canvasSpace.y
+
+
+    ));
+    if (c_pressed && selectionManager.getNodes()->size() == 1) {
+        dragNDropAction.onEnd(touch, selectionManager.getNodes()->at(0), &flatNodes);
     }
+
+    flatNodes.clear();
     //selectedNodes.clear();
 }
 
@@ -163,7 +191,12 @@ void ImGuiEditor::drawTreeView() {
     if (ImGui::TreeNode("Nodes")) {
         ImGui::Indent();
         int counter = 1;
-        for (Node *n: canvasNode->getChildren()) {
+
+        TraverseUtil::traversAllChildren(canvasNode, [this, &counter](Node *n) {
+
+
+//        });
+//        for (Node *n: canvasNode->getChildren()) {
 
             CastType type = CastUtil::getType(n);
             std::string name = StringUtils::format("%s : %s", n->getName().empty() ? "Empty" : n->getName().c_str(),
@@ -177,7 +210,7 @@ void ImGuiEditor::drawTreeView() {
 
 
             ImGui::PopID();
-        }
+        });
         ImGui::Unindent();
         ImGui::TreePop();
 
@@ -215,6 +248,12 @@ void ImGuiEditor::showEditWindow() {
             float g = color[1];
             float b = color[2];
             canvasNode->setColor(Color3B(Color4F(r, g, b, 1)));
+        }
+
+
+        b2Vec2 gravity = scene->getWorld()->GetGravity();
+        if (ImGui::DragFloat2("Gravity", &gravity.x, 0.1)) {
+            scene->getWorld()->SetGravity(gravity);
         }
     }
 
@@ -288,77 +327,11 @@ void ImGuiEditor::showEditWindow() {
         }
 
         if (CastUtil::getType(selectedNode) == CastType::SPRITE) {
-            if (ImGui::CollapsingHeader("Sprite properties")) {
 
-
-            }
+            auto sprt = dynamic_cast<b2Sprite *>(selectedNode);
+            editor::physicsEditor(sprt);
         }
 
-
-
-//
-//        if (ImGui::CollapsingHeader("Physics")) {
-//
-//
-//            if (editableNodeTree && editableNodeTree->enablePhysics) {
-//                const char *items[] = {
-//                        "Static", "Dynamic", "Kinematic"
-//                };
-//
-//
-//                if (!editableNodeTree->physics) {
-//                    editNodeBuilder.createDefaultPhysics(editableNodeTree);
-//                }
-//
-//                BodyT *body = editableNodeTree->physics.get();
-//                int type = body->type;
-//                //static int position = 0;
-//                if (ImGui::Combo("Types", &type, items, 3)) body->type = BodyType(type);
-//
-//
-//                Vec2 pos(body->pos->x(), body->pos->y());
-//                if (ImGui::DragFloat2("Body position", &pos.x))body->pos.reset(new Vec2f(pos.x, pos.y));
-//
-//                ImGui::Text("Points");
-//
-//
-//                for (int i = 0; i < body->fixtures.size(); i++) {
-//
-//                    if (ImGui::TreeNode(StringUtils::format("Fixture %d", i).c_str())) {
-//
-//
-//                        FixtureT *fixtureT = body->fixtures[i].get();
-//
-//
-//                        const char *fixtureTypes[] = {
-//                                "Polygon", "Circle", "Line"
-//                        };
-//                        int fixtureType = fixtureT->type;
-//                        if (ImGui::Combo("Fixture type", &fixtureType, fixtureTypes, 3))
-//                            fixtureT->type = FixtureType(fixtureType);
-//
-//
-//                        for (int j = 0; j < fixtureT->points.size(); j++) {
-//                            const char *label = StringUtils::format("Point %d", j).c_str();
-//                            Vec2 fixPos(fixtureT->points[j].x(), fixtureT->points[j].y());
-//                            if (ImGui::DragFloat2(label, &fixPos.x))fixtureT->points[j] = Vec2f(fixPos.x, fixPos.y);
-//                            ImGui::SameLine();
-//                            ImGui::PushID(j);
-//                            if (ImGui::Button("x")) {
-//                                fixtureT->points.erase(fixtureT->points.begin() + j);
-//                            }
-//                            ImGui::PopID();
-//                        }
-//
-//                        if (ImGui::Button("Add point")) {
-//                            fixtureT->points.push_back(Vec2f(0, 0));
-//                        }
-//
-//                        ImGui::TreePop();
-//                    }
-//                }
-//            }
-//        }
 
     }
 
@@ -456,9 +429,27 @@ void ImGuiEditor::drawCreateView() {
         ImGui::SetTooltip("Creates new button node");
     ImGui::SameLine();
 
+
+    if (ImGui::Button("ListView")) {
+        cocos2d::ui::ListView *layout = cocos2d::ui::ListView::create();
+        layout->setContentSize(cocos2d::Size(200, 100));
+        layout->setBackGroundColorType(cocos2d::ui::Layout::BackGroundColorType::SOLID);
+        layout->setBackGroundColor(Color3B::WHITE);
+        layout->setBackGroundColorOpacity(100);
+        canvasNode->addChild(layout);
+
+    }
+    if (ImGui::IsItemHovered())
+        ImGui::SetTooltip("Creates new button node");
+
+
     if (ImGui::Button("Sprite")) {
-        cocos2d::Sprite *sprite = cocos2d::Sprite::createWithSpriteFrameName("helloworld");
+
+        b2Sprite *sprite = b2Sprite::create();
+        sprite->initWithSpriteFrameName("circle");
         canvasNode->addChild(sprite);
+        sprite->setAnchorPoint(cocos2d::Point::ANCHOR_BOTTOM_LEFT);
+        sprite->setOpacity(50);
     }
     if (ImGui::IsItemHovered())
         ImGui::SetTooltip("Creates new sprite node");
@@ -476,26 +467,41 @@ void ImGuiEditor::drawCreateView() {
 
 
     ImGui::Separator();
-    ImGui::TextColored(ImColor(209, 35, 89), "Physics");
+    ImGui::TextColored(ImColor(209, 35, 89), "Physics joints");
     ImGui::PushStyleColor(ImGuiCol_Button, ImColor(209, 35, 89));
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImColor(221, 35, 89));
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImColor(199, 34, 81));
-    ImGui::Button("Body");
-    if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("Creates new body");
-
-    ImGui::SameLine();
-    ImGui::Button("Fixture");
-    if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("Creates new fixture");
 
 
-    ImGui::SameLine();
-    ImGui::Button("Joint");
-    if (ImGui::IsItemHovered())
-        ImGui::SetTooltip("Creates new joint");
+    bool areJonintPossible = (selectionManager.getNodes()->size() == 2 &&
+                              dynamic_cast<b2Sprite *>(selectionManager.getNodes()->at(0)) &&
+                              dynamic_cast<b2Sprite *>(selectionManager.getNodes()->at(1)));
+
+    if (areJonintPossible) {
+        if (ImGui::Button("Distance")) {}
+        ImGui::SameLine();
+        if (ImGui::Button("Revolute")) {}
+        ImGui::SameLine();
+        if (ImGui::Button("Prismatic")) {}
+
+        if (ImGui::Button("Weld")) {}
+        ImGui::SameLine();
+        if (ImGui::Button("Rope")) {}
 
 
+        ImGui::SameLine();
+        ImGui::Button("Wheel");
+
+
+        if (ImGui::Button("Friction")) {}
+        ImGui::SameLine();
+        if (ImGui::Button("Gear")) {};
+
+
+        ImGui::SameLine();
+        if (ImGui::Button("Pulley")) {};
+
+    }
     ImGui::PopStyleColor(3);
 
 
@@ -560,12 +566,12 @@ void ImGuiEditor::drawToolbar() {
     }
 
 
-    if (ImGui::ImageButton(ImVec2(20, 20), "play", play)) {
-        play = true;
+    if (ImGui::ImageButton(ImVec2(20, 20), "play", scene->isScheduled())) {
+        scene->playPhysics();
     }
     ImGui::SameLine();
-    if (ImGui::ImageButton(ImVec2(20, 20), "stop", !play)) {
-        play = false;
+    if (ImGui::ImageButton(ImVec2(20, 20), "stop", !scene->isScheduled())) {
+        scene->stopPhysics();
     }
 
 
@@ -579,9 +585,9 @@ void ImGuiEditor::keyBoardPressed(EventKeyboard::KeyCode keyCode, Event *event) 
         this->dragEnable = true;
     } else if (keyCode == EventKeyboard::KeyCode::KEY_CTRL) {
         this->ctrlPressed = true;
-    } else if (keyCode == EventKeyboard::KeyCode::KEY_C){
+    } else if (keyCode == EventKeyboard::KeyCode::KEY_C) {
         this->c_pressed = true;
-    }else{
+    } else {
 
     }
 
@@ -592,9 +598,9 @@ void ImGuiEditor::keyBoardReleased(EventKeyboard::KeyCode keyCode, Event *event)
         this->dragEnable = false;
     } else if (keyCode == EventKeyboard::KeyCode::KEY_CTRL) {
         this->ctrlPressed = false;
-    }else if(keyCode == EventKeyboard::KeyCode::KEY_C){
+    } else if (keyCode == EventKeyboard::KeyCode::KEY_C) {
         this->c_pressed = false;
-    }else{
+    } else {
 
     }
 }
@@ -632,10 +638,10 @@ void ImGuiEditor::drawHiararchyEditor() {
 void ImGuiEditor::onEnter() {
     Node::onEnter();
 
-    b2Sprite *sprite = b2Sprite::create();
-    sprite->initWithFile("stop.png");
-    sprite->setPosition(200, 200);
-    addChild(sprite);
+    scene = dynamic_cast<b2Scene *>(getScene());
+    scene->translateDebugLayer(canvasPosition);
+    scene->unscheduleUpdate();
+
 
 }
 

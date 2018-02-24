@@ -9,9 +9,9 @@ cocos2d::Node *DragNDropAction::onBegin(cocos2d::Touch *touch, cocos2d::Vector<c
     for (cocos2d::Node *node :*nodes) {
         if (node->getBoundingBox().containsPoint(node->getParent()->convertTouchToNodeSpace(touch))) {
             cocos2d::DrawNode *draw = cocos2d::DrawNode::create();
-            draw->drawRect(cocos2d::Vec2::ZERO, node->getBoundingBox().size, cocos2d::Color4F::RED);
-            draw->setTag(DRAW_NODE_TAG);
-            node->addChild(draw);
+//            draw->drawRect(cocos2d::Vec2::ZERO, node->getBoundingBox().size, cocos2d::Color4F::RED);
+//            draw->setTag(DRAW_NODE_TAG);
+//            node->addChild(draw);
             node->setLocalZOrder(100);
             return node;
         }
@@ -55,7 +55,7 @@ void DragNDropAction::onEnd(cocos2d::Touch *touch, cocos2d::Node *selected, coco
             selected->removeFromParent();
             cocos2d::Vec2 position = n->convertTouchToNodeSpace(touch);
             cocos2d::Vec2 childPosition = selected->convertTouchToNodeSpace(touch);
-            selected->setPosition(position - childPosition);
+            selected->setPosition(position);
             n->addChild(selected);
             break;
         }

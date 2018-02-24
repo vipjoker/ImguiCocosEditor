@@ -7,6 +7,7 @@
 
 #include "cocos2d.h"
 #include "ui/CocosGUI.h"
+#include "b2Sprite.h"
 #include <typeinfo>
 enum CastType{
     NODE,SPRITE,LABEL,LAYOUT,BUTTON

@@ -12,7 +12,7 @@
 #include "cocos2d.h"
 #include "Box2D/Box2D.h"
 
-#define B2D_RATIO 32
+#define B2D_RATIO 32.0f
 
 USING_NS_CC;
 namespace helper {

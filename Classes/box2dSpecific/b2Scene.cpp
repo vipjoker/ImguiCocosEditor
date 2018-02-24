@@ -24,7 +24,7 @@ b2World *b2Scene::getWorld() {
 }
 
 void b2Scene::showDebug() {
-    b2DebugLayer *layer = b2DebugLayer::create(world,RATIO);
+    layer = b2DebugLayer::create(world,RATIO);
     addChild(layer);
 }
 
@@ -48,8 +48,56 @@ bool b2Scene::init() {
 
 void b2Scene::update(float dt) {
     world->Step(dt,8,3);
-
-
     world->DrawDebugData();
+}
+
+void b2Scene::translateDebugLayer(cocos2d::Vec2 pos) {
+    layer->setPosition(pos);
+}
+
+void b2Scene::stopPhysics() {
+    isRunningPhysics = false;
+    unscheduleUpdate();
+    Vector<b2Sprite*> sprites;
+    TraverseUtil::traversAllChildren(this,[&sprites](cocos2d::Node *n){
+
+        b2Sprite *sprt = dynamic_cast<b2Sprite*>(n);
+        if(sprt){
+            sprites.pushBack(sprt);
+        }
+    });
+
+    for(b2Sprite *sprt:sprites){
+
+        sprt->showEditablePoints();
+        if(sprt->getBody()){
+            auto body = sprt->getBody();
+            world->DestroyBody( body);
+            sprt->setBody(nullptr);
+        }
+    }
+
+}
+
+void b2Scene::playPhysics() {
+    isRunningPhysics = true;
+    Vector<b2Sprite*> sprites;
+    TraverseUtil::traversAllChildren(this,[&sprites](cocos2d::Node *n){
+
+        b2Sprite *sprt = dynamic_cast<b2Sprite*>(n);
+        if(sprt){
+            sprites.pushBack(sprt);
+        }
+    });
+    for(b2Sprite *sprt: sprites){
+        sprt->hideEditablePoints();
+        sprt->createBody(world);
+    }
+    std::cout << "Node found " << sprites.size()<< std::endl;
+    scheduleUpdate();
+}
+
+bool b2Scene::isScheduled() {
+    return isRunningPhysics;
 }
 
