@@ -20,7 +20,6 @@
 #include "CastUtil.h"
 #include "EditorExtensions.h"
 
-
 USING_NS_CC;
 using namespace Editor;
 class ImGuiEditor : public cocos2d::Layer {
@@ -32,6 +31,7 @@ class ImGuiEditor : public cocos2d::Layer {
     b2Scene *scene;
     cocos2d::Label *info;
     cocos2d::Vec2 canvasPosition;
+    cocos2d::DrawNode *drawNode;
     ResourceManager resourceManager;
     FileManager fileManager;
     NodeBuilder nodeBuilder;

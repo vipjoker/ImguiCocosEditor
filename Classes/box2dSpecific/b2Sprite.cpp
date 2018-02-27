@@ -11,7 +11,7 @@ bool b2Sprite::init() {
         return false;
     }
 
-    // scheduleUpdate();
+     scheduleUpdate();
 
 
     return true;
@@ -33,6 +33,7 @@ void b2Sprite::setBody(b2Body *body) {
 void b2Sprite::createSquareFixture() {
     EditableDrawNode *editableDrawNode = EditableDrawNode::create();
     editableDrawNodes.pushBack(editableDrawNode);
+    editableDrawNode->setPosition(getContentSize()/2);
     addChild(editableDrawNode);
 }
 

@@ -101,3 +101,7 @@ bool b2Scene::isScheduled() {
     return isRunningPhysics;
 }
 
+void b2Scene::addJoint(b2JointHolder *jointHolder) {
+
+}
+

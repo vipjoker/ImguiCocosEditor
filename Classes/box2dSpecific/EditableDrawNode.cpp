@@ -41,8 +41,8 @@ void EditableDrawNode::redraw() {
     switch (type){
         case CIRCLE:{
             float distance = array[0].getDistance(array[1]);
-            drawSolidCircle(array[0],distance,0,32,RedTransparent);
-            drawCircle(array[0],distance,0,32,true,Red);
+            drawSolidCircle(Vec2::ZERO,distance,0,32,RedTransparent);
+            drawCircle(Vec2::ZERO,distance,0,32,true,Red);
         }
             break;
         case POLY:{
@@ -189,7 +189,11 @@ void EditableDrawNode::fromShapeToPoints(b2Shape &shape) {
 
     switch(shape.m_type){
         case b2Shape::Type::e_circle:{
-
+            const b2CircleShape *sh = dynamic_cast<const b2CircleShape *>(&shape);
+            Vec2 center = helper::toVec2(sh->m_p);
+            addPoint(center);
+            float radius = helper::fromB2d(sh->m_radius);
+            addPoint(center + cocos2d::Vec2(radius,0));
         }break;
         case b2Shape::Type::e_polygon:{
             const b2PolygonShape *sh = dynamic_cast<const b2PolygonShape *>(&shape);

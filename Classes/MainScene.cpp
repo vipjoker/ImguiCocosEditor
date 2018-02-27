@@ -13,6 +13,9 @@ bool ImGuiEditor::init() {
     canvasNode->setPosition(canvasPosition);
 
     addChild(canvasNode, 5);
+    drawNode = DrawNode::create();// draw jonts here
+    canvasNode->addChild(drawNode);
+
 
 
     fileManager.loadFiles("/");
@@ -407,8 +410,8 @@ void ImGuiEditor::drawCreateView() {
 
 
     ImGui::SetNextWindowPos(ImVec2(0, 20), ImGuiSetCond_Once);
-    ImGui::Begin("Create");
 
+    ImGui::Begin("Create");
 
     ImGui::TextColored(ImColor(60, 186, 116), "Nodes");
     ImGui::PushStyleColor(ImGuiCol_Button, ImColor(60, 186, 116));
@@ -448,7 +451,6 @@ void ImGuiEditor::drawCreateView() {
         b2Sprite *sprite = b2Sprite::create();
         sprite->initWithSpriteFrameName("circle");
         canvasNode->addChild(sprite);
-        sprite->setAnchorPoint(cocos2d::Point::ANCHOR_BOTTOM_LEFT);
         sprite->setOpacity(50);
     }
     if (ImGui::IsItemHovered())
@@ -478,28 +480,50 @@ void ImGuiEditor::drawCreateView() {
                               dynamic_cast<b2Sprite *>(selectionManager.getNodes()->at(1)));
 
     if (areJonintPossible) {
-        if (ImGui::Button("Distance")) {}
+
+
+        b2Sprite *bodyA = dynamic_cast<b2Sprite *>(selectionManager.getNodes()->at(0));
+        b2Sprite *bodyB =dynamic_cast<b2Sprite *>(selectionManager.getNodes()->at(1));
+        if (ImGui::Button("Distance")) {
+            scene->addJoint(new b2JointHolder(bodyA,bodyB,b2JointHolder::JointType::DISTANCE));
+        }
         ImGui::SameLine();
-        if (ImGui::Button("Revolute")) {}
+        if (ImGui::Button("Revolute")) {
+            scene->addJoint(new b2JointHolder(bodyA,bodyB,b2JointHolder::JointType::REVOLUTE));
+        }
         ImGui::SameLine();
-        if (ImGui::Button("Prismatic")) {}
+        if (ImGui::Button("Prismatic")) {
+            scene->addJoint(new b2JointHolder(bodyA,bodyB,b2JointHolder::JointType::PRISMATIC));
+        }
 
-        if (ImGui::Button("Weld")) {}
+        if (ImGui::Button("Weld")) {
+            scene->addJoint(new b2JointHolder(bodyA,bodyB,b2JointHolder::JointType::WELD));
+        }
         ImGui::SameLine();
-        if (ImGui::Button("Rope")) {}
-
-
-        ImGui::SameLine();
-        ImGui::Button("Wheel");
-
-
-        if (ImGui::Button("Friction")) {}
-        ImGui::SameLine();
-        if (ImGui::Button("Gear")) {};
+        if (ImGui::Button("Rope")) {
+            scene->addJoint(new b2JointHolder(bodyA,bodyB,b2JointHolder::JointType::ROPE));
+        }
 
 
         ImGui::SameLine();
-        if (ImGui::Button("Pulley")) {};
+        if(ImGui::Button("Wheel")){
+            scene->addJoint(new b2JointHolder(bodyA,bodyB,b2JointHolder::JointType::WHEEL));
+        }
+
+
+        if (ImGui::Button("Friction")) {
+            scene->addJoint(new b2JointHolder(bodyA,bodyB,b2JointHolder::JointType::FRICTION));
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Gear")) {
+            scene->addJoint(new b2JointHolder(bodyA,bodyB,b2JointHolder::JointType::GEAR));
+        };
+
+
+        ImGui::SameLine();
+        if (ImGui::Button("Pulley")) {
+            scene->addJoint(new b2JointHolder(bodyA,bodyB,b2JointHolder::JointType::PULLEY));
+        };
 
     }
     ImGui::PopStyleColor(3);
@@ -567,11 +591,15 @@ void ImGuiEditor::drawToolbar() {
 
 
     if (ImGui::ImageButton(ImVec2(20, 20), "play", scene->isScheduled())) {
-        scene->playPhysics();
+        if(!scene->isScheduled()){
+            scene->playPhysics();
+        }
     }
     ImGui::SameLine();
     if (ImGui::ImageButton(ImVec2(20, 20), "stop", !scene->isScheduled())) {
-        scene->stopPhysics();
+        if(scene->isScheduled()){
+            scene->stopPhysics();
+        }
     }
 
 

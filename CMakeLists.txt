@@ -258,7 +258,7 @@ set(GAME_HEADERS
         Classes/Settings.cpp
         Classes/Settings.h
         Classes/actions/DragAction.cpp
-        Classes/actions/DragAction.h Classes/box2dSpecific/EditableDrawNode.cpp Classes/box2dSpecific/EditableDrawNode.h Classes/box2dSpecific/b2JointDrawNode.cpp Classes/box2dSpecific/b2JointDrawNode.h Classes/EditorExtensions.cpp Classes/EditorExtensions.h)
+        Classes/actions/DragAction.h Classes/box2dSpecific/EditableDrawNode.cpp Classes/box2dSpecific/EditableDrawNode.h Classes/box2dSpecific/b2JointDrawNode.cpp Classes/box2dSpecific/b2JointDrawNode.h Classes/EditorExtensions.cpp Classes/EditorExtensions.h Classes/box2dSpecific/b2JointHolder.cpp Classes/box2dSpecific/b2JointHolder.h)
 
 
 add_subdirectory(cocos2d/external/Box2D)
